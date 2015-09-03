@@ -1,5 +1,3 @@
-package boss;
-
 /**
  * Licensed to the Apache Software Foundation (ASF) under one
  * or more contributor license agreements.  See the NOTICE file
@@ -17,6 +15,8 @@ package boss;
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+package boss;
 
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
