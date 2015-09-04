@@ -29,7 +29,7 @@ To implement aggregations with a persistent state see [2].
 
 ## Step 3: Windowing
 
-Apply windowing to the stream by count, time or delta, see [3].
+Apply windowing to the stream by time and delta, see [3].
 
 [3] https://ci.apache.org/projects/flink/flink-docs-master/apis/streaming_guide.html#window-operators
 

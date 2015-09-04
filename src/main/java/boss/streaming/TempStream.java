@@ -72,11 +72,13 @@ public class TempStream {
 		
 		//================================= Exercise 3 =====================================
 		
-		// Apply a window minimum on the temperatures for each city
-		// You can try Count.of(..) or Time.of(..)
+		// Apply a window minimum on the temperatures for each city in the last 5 seconds
 		// DataStream<Temp> windowMin = tempsByCity.window(...).every(...)..
 		
 		// windowMin.addSink(new PrintWithPrefix("WindowMin"));	
+		
+		// Generate an alert when a city is experiencing a temperature difference of 20 degrees
+		// DataStreamSink<String> alerts = tempsByCity.window(new Delta<Temp>(...));
 
 		//================================= Exercise 4 =====================================
 
