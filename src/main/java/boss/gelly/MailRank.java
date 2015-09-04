@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package boss;
+package boss.gelly;
 
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;

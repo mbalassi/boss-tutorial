@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package boss;
+package boss.streaming;
 
 import java.io.IOException;
 import java.util.HashMap;
