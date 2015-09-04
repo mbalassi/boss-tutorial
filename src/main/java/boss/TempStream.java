@@ -20,6 +20,7 @@ package boss;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.flink.api.common.functions.FilterFunction;
 import org.apache.flink.api.common.functions.FlatMapFunction;
@@ -41,6 +42,7 @@ import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.windowing.deltafunction.DeltaFunction;
 import org.apache.flink.streaming.api.windowing.helper.Count;
 import org.apache.flink.streaming.api.windowing.helper.Delta;
+import org.apache.flink.streaming.api.windowing.helper.Time;
 import org.apache.flink.streaming.api.windowing.policy.TriggerPolicy;
 import org.apache.flink.util.Collector;
 
@@ -69,58 +71,63 @@ public class TempStream {
 		DataStream<Temp> rollingAvgTemp = tempsByCity.map(new RollingAvg());
 
 		// Read population data from a socket and parse it
-//		DataStream<Pop> pops = env.socketTextStream("localhost", 9998).flatMap(new PopParser());
+		DataStream<Pop> pops = env.socketTextStream("localhost", 9998).flatMap(new PopParser());
 
 		// Enrich the incoming population data with the current rolling avg
 		// temperature
-//		DataStream<CityInfo> cityInfo = rollingAvgTemp.connect(pops).groupBy("city", "city").flatMap(new Enricher());
+		DataStream<CityInfo> cityInfo = rollingAvgTemp.connect(pops).groupBy("city", "city").flatMap(new Enricher());
 
 		// Apply a window minimum on the temperatures
-		DataStreamSink<String> windowMin = tempsByCity.window(new Delta<Temp>(new DeltaFunction<Temp>() {
+		DataStream<Temp> windowMin = tempsByCity.window(Time.of(5, TimeUnit.SECONDS))
+				.every(Time.of(3, TimeUnit.SECONDS)).minBy("city").flatten();
+		
+		// Generate an alert whenever a 20 degree temperature difference is observed 
+		DataStreamSink<String> alert = tempsByCity.window(new Delta<Temp>(new DeltaFunction<Temp>() {
 			public double getDelta(Temp oldDataPoint, Temp newDataPoint){
-				return oldDataPoint.temperature - newDataPoint.temperature;
+				return Math.abs(oldDataPoint.temperature - newDataPoint.temperature);
 			}
-		}, new Temp(), 0.25f)).mapWindow(new WindowMapFunction<Temp, String>() {
+		}, new Temp(), 20.0)).mapWindow(new WindowMapFunction<Temp, String>() {
 			@Override
 			public void mapWindow(Iterable<Temp> values, Collector<String> out) throws Exception {
 				out.collect("ALERT IN " + values.iterator().next().city); 
 			}
 		}).flatten().print();
 
-//		DataStream<Diff> cityPairs = env.socketTextStream("localhost", 9997).map(new MapFunction<String, Diff>() {
-//			private static final long serialVersionUID = 1L;
-//
-//			@Override
-//			public Diff map(String arg0) throws Exception {
-//				String[] split = arg0.split(",");
-//				return new Diff(split[0], split[1]);
-//			}
-//		}).partitionByHash(0);
-//
-//		IterativeDataStream<Diff> it = cityPairs.iterate();
-//		DataStream<Diff> step = rollingAvgTemp.partitionByHash("city").connect(it).flatMap(new TempDiffCoOp());
-//
-//		it.closeWith(step.filter(new FilterFunction<Diff>() {
-//
-//			@Override
-//			public boolean filter(Diff d) throws Exception {
-//				return !d.isSecondMatched();
-//			}
-//		}).partitionByHash(1));
-//
-//		DataStream<Diff> diffs = step.filter(new FilterFunction<TempStream.Diff>() {
-//
-//			@Override
-//			public boolean filter(Diff d) throws Exception {
-//				return d.isSecondMatched();
-//			}
-//		});
+		DataStream<Diff> cityPairs = env.socketTextStream("localhost", 9997).map(new MapFunction<String, Diff>() {
+			private static final long serialVersionUID = 1L;
+
+			@Override
+			public Diff map(String arg0) throws Exception {
+				String[] split = arg0.split(",");
+				return new Diff(split[0], split[1]);
+			}
+		}).partitionByHash(0);
+
+		IterativeDataStream<Diff> it = cityPairs.iterate();
+		DataStream<Diff> step = rollingAvgTemp.partitionByHash("city").connect(it).flatMap(new TempDiffCoOp());
+
+		it.closeWith(step.filter(new FilterFunction<Diff>() {
+
+			@Override
+			public boolean filter(Diff d) throws Exception {
+				return !d.isSecondMatched();
+			}
+		}).partitionByHash(1));
+
+		DataStream<Diff> diffs = step.filter(new FilterFunction<TempStream.Diff>() {
+
+			@Override
+			public boolean filter(Diff d) throws Exception {
+				return d.isSecondMatched();
+			}
+		});
 
 		// Print the resulting streams, identified by prefixes
 		rollingMaxTemp.addSink(new PrintWithPrefix("Max"));
 		rollingAvgTemp.addSink(new PrintWithPrefix("Avg"));
-//		cityInfo.addSink(new PrintWithPrefix("PopWithAvg"));
-//		diffs.addSink(new PrintWithPrefix("Diff"));
+		windowMin.addSink(new PrintWithPrefix("WindowMin"));
+		cityInfo.addSink(new PrintWithPrefix("PopWithAvg"));
+		diffs.addSink(new PrintWithPrefix("Diff"));
 
 		// Execute the streaming program
 		env.execute();
