@@ -21,3 +21,11 @@ Now you are set to run Flink! :)
 For the batch and graph intro please go to `src/boss/gelly`, for streaming to `src/boss/streaming` respectively.
 
 As an alternative for seasoned developers with access to the internet we provide a git repository at `https://github.com/mbalassi/boss-tutorial.git` set up with maven. Clone the project and import it to your favorite IDE.
+
+## Slides
+
+The slides used during the workshop are located in the `slides` folder.
+
+## Code exercise solutions
+
+The solution for the exercises can be found on the `solution` git branch.
